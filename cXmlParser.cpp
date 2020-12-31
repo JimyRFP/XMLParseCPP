@@ -1,14 +1,6 @@
 #ifndef CXMLPARSER_CPP
 #define CXMLPARSER_CPP
 #include "cXmlParser.h"
-#include "..\FileControl\getFileName.h"
-int main(){
- char *teste=(char*)"<getta att1=\"val1\" att2=\"val2\" att3=\"12354><h3 alt=\"teset\">nome</h3><h2>value</h2><nova1><nova2></nova2></nova1></getta>";
- cXmlParser par;
- xml_StructInfo *info=par.parser(teste);
- par.Print(info);
- return 0;
-}
 
 void cXmlParser::zeroMemory(xml_StructInfo*str){
  str->attributes=NULL;
@@ -25,6 +17,8 @@ void cXmlParser::zeroMemory(xml_StructInfo*str){
 xml_StructInfo* cXmlParser::parser(const char* data){
  int nTags=0;
  int ind=0;
+ char *mot=NULL;
+ char *tagName;
  xml_StructInfo* ret,*base,*prev=NULL;
 
  ret=(xml_StructInfo*)malloc(1*sizeof(xml_StructInfo));
@@ -42,16 +36,29 @@ xml_StructInfo* cXmlParser::parser(const char* data){
     continue;
   }
   ind+=1;
+  tagName=getTagName(data,&ind);
+  if(tagName==NULL){
+
+    m_StrF.strAdd((mystr*)&mot,(mystr)"StopReason Char: ");
+    m_StrF.strAdd((mystr*)&mot,(mystr)&data[ind]);
+    m_StrF.strAdd((mystr*)&mot,(mystr)"Asc2: ");
+    m_StrF.strAdd((mystr*)&mot,m_StrF.integer2String(data[ind]));
+    sendDebugMessage(__func__,"Null TagName",mot);
+    free(mot);
+    continue;
+  }
   if(nTags>0){
   base->next=(xml_StructInfo*)malloc(1*sizeof(xml_StructInfo));
-  if(base->next==NULL)return NULL;
+  if(base->next==NULL){
+    sendDebugMessage(__func__,"Alloc Erro","");
+    return NULL;
+  }
   prev=base;
   base=base->next;
   zeroMemory(base);
   base->prev=prev;
   }
-  base->name=getTagName(data,&ind);
-  if(base->name==NULL)break;
+  base->name=tagName;
   base->nAttributes=getAttributes(data,&ind,&(base->attributes),&(base->attributesValue));
   base->value=getTagValue(data,&ind);
    nTags++;
@@ -66,9 +73,11 @@ xml_StructInfo* cXmlParser::parser(const char* data){
 char* cXmlParser::getTagName(const char* data,int*ind){
  char *ret=NULL;
  while(data[*ind]==CXMLPARSER_SPACE)(*ind)++;
- while(data[*ind]!=CXMLPARSER_SPACE && data[*ind]!=CXMLPARSER_ENDTAG && data[*ind]!=STRING_END){
-    m_StrF.strAdd((mystr*)&ret,(mystr)&(data[*ind]),0,1);
-    (*ind)++;
+ int initBase=(*ind);
+ while(data[*ind]!=CXMLPARSER_SPACE && data[*ind]!=CXMLPARSER_ENDTAG && data[*ind]!=STRING_END)(*ind)++;
+ if((*ind)-initBase>0){
+ m_StrF.strAdd((mystr*)&ret,(mystr)&(data[initBase]),0,(*ind)-initBase);
+ ret=m_StrF.trimFree(ret);
  }
  sendDebugMessage(__func__,"TagName",ret);
  return ret;
@@ -78,11 +87,17 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
  int natt=0;
  char *tempAtt=NULL;
  bool haveparam;
+ int initInd=(*ind);
  while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_ENDTAG){
   haveparam=false;
+  initInd=(*ind);
   //GETPARAM NAME
   while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_ENDTAG){
     if(data[*ind]==CXMLPARSER_EQUAL){
+     if((*ind)-initInd>0){
+       m_StrF.strAdd((mystr*)&tempAtt,(mystr)&data[initInd],0,(*ind)-initInd);
+       tempAtt=(mystr)m_StrF.trimFree((mystr)tempAtt);
+     }
      if(tempAtt==NULL)break;
      (*ind)++;
      if(data[*ind]!=CXMLPARSER_PARAM_OPENCLOSE){
@@ -98,6 +113,7 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
        *retParam=(char**)realloc(*retParam,(natt)*sizeof(char**));
        *retParamValue=(char**)realloc(*retParamValue,(natt)*sizeof(char**));
      }
+     tempAtt=m_StrF.trimFree(tempAtt);
      (*retParam)[natt-1]=tempAtt;
      (*retParamValue)[natt-1]=NULL;
      sendDebugMessage(__func__,"AttName",tempAtt);
@@ -105,25 +121,29 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
      haveparam=true;
      break;
      }
-    m_StrF.strAdd((mystr*)&tempAtt,(mystr)&data[*ind],0,1);
     (*ind)++;
   }
 
   if(data[*ind]==STRING_END || data[*ind]==CXMLPARSER_ENDTAG)return natt;
   (*ind)++;
   if(!haveparam)continue;
-
+  initInd=(*ind);
   while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_ENDTAG){
 
     if(data[*ind]==CXMLPARSER_PARAM_OPENCLOSE){
+      if((*ind)-initInd>0){
+        m_StrF.strAdd((mystr*)&tempAtt,(mystr)&data[initInd],0,(*ind)-initInd);
+        tempAtt=(mystr)m_StrF.trimFree((mystr)tempAtt);
+      }
       if(tempAtt==NULL)break;
+      tempAtt=m_StrF.trimFree(tempAtt);
       (*retParamValue)[natt-1]=tempAtt;
       sendDebugMessage(__func__,"AttValue",tempAtt);
       tempAtt=NULL;
       (*ind)++;
       break;
     }
-    m_StrF.strAdd((mystr*)&tempAtt,(mystr)&data[*ind],0,1);
+
     (*ind)++;
   }
 
@@ -135,9 +155,11 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
 char *cXmlParser::getTagValue(const char *data,int *ind){
   char *ret=NULL;
   if(data[*ind]==CXMLPARSER_ENDTAG)(*ind)++;
-  while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_OPENTAG_INIT){
-    m_StrF.strAdd((mystr*)&ret,(mystr)&(data[*ind]),0,1);
-  (*ind)++;
+  int initInd=(*ind);
+  while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_OPENTAG_INIT)(*ind)++;
+  if((*ind)-initInd>0){
+   m_StrF.strAdd((mystr*)&ret,(mystr)&(data[initInd]),0,(*ind)-initInd);
+   ret=m_StrF.trimFree(ret);
   }
   sendDebugMessage(__func__,"TagValue",ret);
   return ret;
@@ -146,9 +168,11 @@ char *cXmlParser::getTagValue(const char *data,int *ind){
 void cXmlParser::getTagEnd(xml_StructInfo*strRet,const char *data,int*ind){
   char *closetag=NULL;
   xml_StructInfo*infoRef,*fatherRef;
-  while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_ENDTAG){
-    m_StrF.strAdd((mystr*)(&closetag),(mystr)&(data[*ind]),0,1);
-    (*ind)++;
+  int initInd=(*ind);
+  while(data[*ind]!=STRING_END && data[*ind]!=CXMLPARSER_ENDTAG)(*ind)++;
+  if((*ind)-initInd>0){
+    m_StrF.strAdd((mystr*)(&closetag),(mystr)&(data[initInd]),0,(*ind)-initInd);
+    closetag=m_StrF.trimFree(closetag);
   }
   infoRef=strRet;
   while(infoRef!=NULL){
@@ -179,7 +203,7 @@ void cXmlParser::Print(const xml_StructInfo*info){
     printf("TagName: %s\n",base->name);
     printf("nAttributes %d\n",base->nAttributes);
     for(int i=0;i<base->nAttributes;i++){
-      printf("AttName:%s AttValue:%s",base->attributes[i],base->attributesValue[i]);
+      printf("%s=\"%s\" ",base->attributes[i],base->attributesValue[i]);
     }
     if(base->nAttributes>0)printf("\n");
     if(base->value!=NULL)
@@ -194,6 +218,52 @@ void cXmlParser::Print(const xml_StructInfo*info){
 
   }
 
+}
+
+xml_StructInfo* cXmlParser::getRefByAttributeName(const xml_StructInfo*baseRef,const char *name){
+  xml_StructInfo*readInfo,*ret=NULL,*lastRef=NULL;
+  readInfo=(xml_StructInfo*)baseRef;
+  bool hasVal;
+  bool refSet=false;
+  while(readInfo!=NULL){
+    hasVal=false;
+    for(int i=0;i<readInfo->nAttributes;i++){
+      if(m_StrF.strCompare((mystr)name,(mystr)readInfo->attributes[i],m_StrF.getStringLen((mystr)name))){
+         hasVal=true;
+        break;
+      }
+    }
+    if(hasVal){
+      if(!refSet){
+        if(!copyStr(readInfo,&ret))return NULL;
+        ret->prev=NULL;
+        refSet=true;
+        lastRef=ret;
+
+      }else{
+      if(!copyStr(readInfo,&lastRef->next))return NULL;
+      lastRef=lastRef->next;
+      }
+    }
+    readInfo=readInfo->next;
+  }
+  if(lastRef!=NULL)lastRef->next=NULL;
+  return ret;
+}
+
+bool cXmlParser::copyStr(const xml_StructInfo*base,xml_StructInfo**dst){
+  *dst=(xml_StructInfo*)malloc(sizeof(xml_StructInfo)*1);
+  if(*dst==NULL)return false;
+  (*dst)->attributes=base->attributes;
+  (*dst)->attributesValue=base->attributesValue;
+  (*dst)->father=base->father;
+  (*dst)->isclose=base->isclose;
+  (*dst)->name=base->name;
+  (*dst)->nAttributes=base->nAttributes;
+  (*dst)->next=base->next;
+  (*dst)->prev=base->prev;
+  (*dst)->value=base->value;
+  return true;
 }
 
 void cXmlParser::sendDebugMessage(const char*fName,const char*message1=NULL,const char*message2=NULL){
