@@ -35,6 +35,7 @@ class cXmlParser{
     void Print(const xml_StructInfo*);
     xml_StructInfo* getRefByAttributeName(const xml_StructInfo*,const char *);
     xml_StringArray getAttributeValue(const xml_StructInfo*,const char*);
+    void freeMemory(xml_StructInfo**);
  private:
     void zeroMemory(xml_StructInfo*);
     char * getTagName(const char*,int *);

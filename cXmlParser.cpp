@@ -110,10 +110,13 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
        *retParam=(char**)malloc(natt*sizeof(char**));
        *retParamValue=(char**)malloc(natt*sizeof(char**));
      }else{
-       *retParam=(char**)realloc(*retParam,(natt)*sizeof(char**));
+        *retParam=(char**)realloc(*retParam,(natt)*sizeof(char**));
        *retParamValue=(char**)realloc(*retParamValue,(natt)*sizeof(char**));
      }
-     tempAtt=m_StrF.trimFree(tempAtt);
+     if(*retParam==NULL || *retParamValue==NULL){
+
+        continue;
+     }
      (*retParam)[natt-1]=tempAtt;
      (*retParamValue)[natt-1]=NULL;
      sendDebugMessage(__func__,"AttName",tempAtt);
@@ -135,8 +138,9 @@ int cXmlParser::getAttributes(const char*data,int*ind,char***retParam,char***ret
         m_StrF.strAdd((mystr*)&tempAtt,(mystr)&data[initInd],0,(*ind)-initInd);
         tempAtt=(mystr)m_StrF.trimFree((mystr)tempAtt);
       }
-      if(tempAtt==NULL)break;
-      tempAtt=m_StrF.trimFree(tempAtt);
+      if(tempAtt==NULL){
+         break;
+      }
       (*retParamValue)[natt-1]=tempAtt;
       sendDebugMessage(__func__,"AttValue",tempAtt);
       tempAtt=NULL;
@@ -192,8 +196,8 @@ void cXmlParser::getTagEnd(xml_StructInfo*strRet,const char *data,int*ind){
     }
    infoRef=infoRef->prev;
   }
-
- }
+  m_StrF.freeStr(&closetag);
+}
 
 
 void cXmlParser::Print(const xml_StructInfo*info){
@@ -254,17 +258,48 @@ xml_StructInfo* cXmlParser::getRefByAttributeName(const xml_StructInfo*baseRef,c
 bool cXmlParser::copyStr(const xml_StructInfo*base,xml_StructInfo**dst){
   *dst=(xml_StructInfo*)malloc(sizeof(xml_StructInfo)*1);
   if(*dst==NULL)return false;
-  (*dst)->attributes=base->attributes;
-  (*dst)->attributesValue=base->attributesValue;
+  (*dst)->attributes=m_StrF.copyStrArray(base->attributes,base->nAttributes);
+  (*dst)->attributesValue=m_StrF.copyStrArray(base->attributesValue,base->nAttributes);
   (*dst)->father=base->father;
   (*dst)->isclose=base->isclose;
-  (*dst)->name=base->name;
+  (*dst)->name=m_StrF.copyStr(base->name);
   (*dst)->nAttributes=base->nAttributes;
   (*dst)->next=base->next;
   (*dst)->prev=base->prev;
-  (*dst)->value=base->value;
+  (*dst)->value=m_StrF.copyStr(base->value);
   return true;
 }
+
+void cXmlParser::freeMemory(xml_StructInfo**info){
+  xml_StructInfo *next,*base=*info;
+  next=base;
+  *info=NULL;
+  while(next!=NULL){
+    base=next;
+    for(int i=0;i<base->nAttributes;i++){
+       if(base->attributes[i]!=NULL)
+            free(base->attributes[i]);
+       if(base->attributesValue[i]!=NULL)
+            free(base->attributesValue[i]);
+    }
+    if(base->attributes!=NULL){
+      free(base->attributes);
+    }
+    if(base->attributesValue!=NULL){
+      free(base->attributesValue);
+    }
+    if(base->name!=NULL){
+      free(base->name);
+    }
+    if(base->value!=NULL){
+         free(base->value);
+    }
+    next=base->next;
+    free(base);
+    base=next;
+  }
+}
+
 
 void cXmlParser::sendDebugMessage(const char*fName,const char*message1=NULL,const char*message2=NULL){
   #ifndef CXMLPARSER_DEBUG
