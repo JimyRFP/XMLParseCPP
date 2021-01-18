@@ -242,66 +242,65 @@ void cXmlParser::Print(const xml_StructInfo*info){
 }
 
 xml_StructInfo* cXmlParser::getRefByAttributeName(const xml_StructInfo*structRef,const char *attName){
-  xml_StructInfo*currentStructRead,*ret=NULL,*lastRef=NULL;
-  currentStructRead=(xml_StructInfo*)structRef;
-  bool hasVal;
-  bool refSet=false;
-  while(currentStructRead!=NULL){
-    hasVal=false;
-    for(int i=0;i<currentStructRead->nAttributes;i++){
-      if(m_StrF.strCompare((mystr)attName,(mystr)currentStructRead->attributes[i],m_StrF.getStringLen((mystr)attName))){
-         hasVal=true;
+  xml_StructInfo*currentReadRef,*returnRef=NULL,*addStructRef=NULL;
+  currentReadRef=(xml_StructInfo*)structRef;
+  bool hasAttName;
+  bool refIsSet=false;
+  while(currentReadRef!=NULL){
+    hasAttName=false;
+    for(int i=0;i<currentReadRef->nAttributes;i++){
+      if(m_StrF.strCompare((mystr)attName,(mystr)currentReadRef->attributes[i])){
+         hasAttName=true;
         break;
       }
     }
-    if(hasVal){
-      if(!refSet){
-        if(!copyStr(currentStructRead,&ret))return NULL;
-        ret->prev=NULL;
-        refSet=true;
-        lastRef=ret;
+    if(hasAttName){
+      if(!refIsSet){
+        if(!copyStr(currentReadRef,&returnRef))return NULL;
+        returnRef->prev=NULL;
+        refIsSet=true;
+        addStructRef=returnRef;
 
       }else{
-      if(!copyStr(currentStructRead,&lastRef->next)){
-         freeMemory(&ret);
+      if(!copyStr(currentReadRef,&addStructRef->next)){
+         freeMemory(&returnRef);
          return NULL;
       }
-      lastRef=lastRef->next;
+      addStructRef=addStructRef->next;
       }
     }
-    currentStructRead=currentStructRead->next;
+    currentReadRef=currentReadRef->next;
   }
-  if(lastRef!=NULL)lastRef->next=NULL;
-  return ret;
+  if(addStructRef!=NULL)addStructRef->next=NULL;
+  return returnRef;
 }
 
 xml_StructInfo* cXmlParser::getRefByTagName(const xml_StructInfo *base,const char *tagName){
   if(tagName==NULL)return NULL;
-  xml_StructInfo*retRef=NULL;
-  xml_StructInfo*currentRetRef=NULL;
-  xml_StructInfo*currentCompare=(xml_StructInfo*)base;
-  while(currentCompare!=NULL){
-    if(m_StrF.strCompare(currentCompare->name,(mystr)tagName)){
-       if(retRef==NULL){
-        copyStr(currentCompare,&retRef);
-        if(retRef==NULL)return NULL;
-        retRef->next=NULL;
-        currentRetRef=retRef;
-        currentCompare=currentCompare->next;
-        continue;
+  xml_StructInfo*returnRef=NULL;
+  xml_StructInfo*addStructRef=NULL;
+  xml_StructInfo*currentReadRef=(xml_StructInfo*)base;
+  while(currentReadRef!=NULL){
+    if(m_StrF.strCompare(currentReadRef->name,(mystr)tagName)){
+       if(returnRef==NULL){
+        copyStr(currentReadRef,&returnRef);
+        if(returnRef==NULL)return NULL;
+        returnRef->next=NULL;
+        addStructRef=returnRef;
+       }else{
+        copyStr(currentReadRef,&addStructRef->next);
+        if(addStructRef->next==NULL){
+         freeMemory(&returnRef);
+         return NULL;
+        }
+        addStructRef=returnRef->next;
+        addStructRef->next=NULL;
        }
-       copyStr(currentCompare,&currentRetRef->next);
-       if(currentRetRef->next==NULL){
-        freeMemory(&retRef);
-        return NULL;
-       }
-       currentRetRef=retRef->next;
-       currentRetRef->next=NULL;
     }
-    currentCompare=currentCompare->next;
+    currentReadRef=currentReadRef->next;
   }
 
-  return retRef;
+  return returnRef;
 }
 
 bool cXmlParser::copyStr(const xml_StructInfo*source,xml_StructInfo**destination){
@@ -319,20 +318,21 @@ bool cXmlParser::copyStr(const xml_StructInfo*source,xml_StructInfo**destination
   return true;
 }
 
-void cXmlParser::freeMemory(xml_StructInfo**info){
-  xml_StructInfo *next,*base=*info;
-  *info=NULL;
-  while(base!=NULL){
-    m_StrF.freeStrArray(&base->attributes,base->nAttributes);
-    m_StrF.freeStrArray(&base->attributesValue,base->nAttributes);
-    m_StrF.freeStr(&base->value);
-    m_StrF.freeStr(&base->name);
-    next=base->next;
-    free(base);
-    base=next;
+void cXmlParser::freeMemory(xml_StructInfo**structToFree){
+  xml_StructInfo *nextRefToFree,*currentRefToFree=*structToFree;
+  if(currentRefToFree==NULL)return;
+  while(currentRefToFree!=NULL){
+    m_StrF.freeStrArray(&currentRefToFree->attributes,currentRefToFree->nAttributes);
+    m_StrF.freeStrArray(&currentRefToFree->attributesValue,currentRefToFree->nAttributes);
+    m_StrF.freeStr(&currentRefToFree->value);
+    m_StrF.freeStr(&currentRefToFree->name);
+    nextRefToFree=currentRefToFree->next;
+    free(currentRefToFree);
+    currentRefToFree=nextRefToFree;
   }
-  if(*info!=NULL)*info=NULL;
+  *structToFree=NULL;
 }
+
 xml_StructInfo* cXmlParser::createXmlStruct(){
   xml_StructInfo*structRef=(xml_StructInfo*)malloc(sizeof(xml_StructInfo));
   if(structRef==NULL)return NULL;
