@@ -2,6 +2,7 @@
 #define CXMLPARSER_H
 #define CXMLPARSER_OPENTAG_INIT '<'
 #define CXMLPARSER_CLOSETAG_STRING "</"
+#define CXMLPARSER_CLOSETAG_LEN 2
 #define CXMLPARSER_CLOSETAG_BAR '/'
 #define CXMLPARSER_ENDTAG '>'
 #define CXMLPARSER_PARAM_OPENCLOSE  '\"'
@@ -34,15 +35,17 @@ class cXmlParser{
     xml_StructInfo* parser(const char*);
     void Print(const xml_StructInfo*);
     xml_StructInfo* getRefByAttributeName(const xml_StructInfo*,const char *);
+    xml_StructInfo* getRefByTagName(const xml_StructInfo*,const char *);
     xml_StringArray getAttributeValue(const xml_StructInfo*,const char*);
     void freeMemory(xml_StructInfo**);
+
  private:
-    xml_StructInfo* createStr();
+    xml_StructInfo* createXmlStruct();
     void zeroMemory(xml_StructInfo*);
     char * getTagName(const char*,int *);
-    int  getAttributes(const char*,int*,char***,char***);
+    int  getAttsNameAndValue(const char*,int*,char***,char***);
     char* getTagValue(const char*,int*);
-    void getTagEnd(xml_StructInfo*,const char*,int*);
+    void setTagEnd(xml_StructInfo*,const char*,int*);
     void sendDebugMessage(const char*,const char*,const char*);
     bool copyStr(const xml_StructInfo*,xml_StructInfo**);
     //OBJ
