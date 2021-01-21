@@ -17,9 +17,6 @@ void cXmlParser::zeroMemory(xml_StructInfo* structToZero){
 xml_StructInfo* cXmlParser::parser(const char* dataToParser){
  int numberOfTags=0;
  int indData=0;
- #ifdef CXMLPARSER_DEBUG
- char *mot=NULL;
- #endif
  char *tagName;
  xml_StructInfo* returnStructRef,*currentStructRef,*prevStructRef=NULL;
 
@@ -36,14 +33,7 @@ xml_StructInfo* cXmlParser::parser(const char* dataToParser){
   tagName=getTagName(dataToParser,&indData);
   if(tagName==NULL){
     #ifdef CXMLPARSER_DEBUG
-    m_StrF.strAdd((mystr*)&mot,(mystr)"StopReason Char: ");
-    m_StrF.strAdd((mystr*)&mot,(mystr)&dataToParser[indData]);
-    m_StrF.strAdd((mystr*)&mot,(mystr)"Asc2: ");
-    m_StrF.strAdd((mystr*)&mot,m_StrF.integer2String(dataToParser[indData]));
-
-      sendDebugMessage(__func__,"Null TagName",mot);
-
-    m_StrF.freeStr(&mot);
+      sendDebugMessage(__func__,"Null TagName","");
     #endif
     continue;
   }
@@ -73,19 +63,14 @@ xml_StructInfo* cXmlParser::parser(const char* dataToParser){
 };
 
 char* cXmlParser::getTagName(const char* data,int*dataInd){
- char *tagName=NULL;
+ mystr tagName=NULL;
  while(data[*dataInd]==CXMLPARSER_OPENTAG_INIT)(*dataInd)++;
  while(data[*dataInd]==CXMLPARSER_SPACE)(*dataInd)++;
- int initStrValueInd=(*dataInd);
- while(data[*dataInd]!=CXMLPARSER_SPACE && data[*dataInd]!=CXMLPARSER_ENDTAG && data[*dataInd]!=STRING_END)(*dataInd)++;
- if((*dataInd)-initStrValueInd>0){
- m_StrF.strAdd((mystr*)&tagName,(mystr)&(data[initStrValueInd]),(*dataInd)-initStrValueInd);
- tagName=m_StrF.trimFree(tagName);
- }
+ (*dataInd)+=getStrUntilStopChar(&tagName,(const mystr)&data[*dataInd],(const mystr)CXMLPARSER_TAGNAME_STOPCHARS);
  #ifdef CXMLPARSER_DEBUG
-   sendDebugMessage(__func__,"TagName",tagNameStr);
+   sendDebugMessage(__func__,"TagName",tagName);
  #endif
- return tagName;
+ return (char*)tagName;
 }
 
 int cXmlParser::getAttsNameAndValue(const char*data,int*dataInd,char***retAttName,char***retAttValue){
@@ -166,15 +151,9 @@ int cXmlParser::getAttsNameAndValue(const char*data,int*dataInd,char***retAttNam
 }
 
 char *cXmlParser::getTagValue(const char *data,int *dataInd){
-  char *tagValueStr=NULL;
-  if(data[*dataInd]==CXMLPARSER_ENDTAG)(*dataInd)++;
-  int initStrInd=(*dataInd);
-  while(data[*dataInd]!=STRING_END && data[*dataInd]!=CXMLPARSER_OPENTAG_INIT)(*dataInd)++;
-  if((*dataInd)-initStrInd>0){
-   m_StrF.strAdd((mystr*)&tagValueStr,(mystr)&(data[initStrInd]),(*dataInd)-initStrInd);
-   tagValueStr=m_StrF.trimFree(tagValueStr);
-  }
-
+  mystr tagValueStr=NULL;
+  while(data[*dataInd]==CXMLPARSER_ENDTAG)(*dataInd)++;
+  (*dataInd)+=getStrUntilStopChar(&tagValueStr,(const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGVALUE_STOPCHARS);
   #ifdef CXMLPARSER_DEBUG
     sendDebugMessage(__func__,"TagValue",tagValueStr);
   #endif
@@ -182,14 +161,9 @@ char *cXmlParser::getTagValue(const char *data,int *dataInd){
 }
 
 void cXmlParser::setTagEnd(xml_StructInfo*strRet,const char *data,int*dataInd){
-  char *tagEndStr=NULL;
+  mystr tagEndStr=NULL;
   xml_StructInfo*infoRef,*fatherRef;
-  int initInd=(*dataInd);
-  while(data[*dataInd]!=STRING_END && data[*dataInd]!=CXMLPARSER_ENDTAG)(*dataInd)++;
-  if((*dataInd)-initInd>0){
-    m_StrF.strAdd((mystr*)(&tagEndStr),(mystr)&(data[initInd]),(*dataInd)-initInd);
-    tagEndStr=m_StrF.trimFree(tagEndStr);
-  }
+  (*dataInd)+=getStrUntilStopChar(&tagEndStr,(const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGEND_STOPCHARS);
   if(tagEndStr==NULL)return;
   infoRef=strRet;
   while(infoRef!=NULL){
@@ -304,6 +278,7 @@ xml_StructInfo* cXmlParser::getRefByTagName(const xml_StructInfo *base,const cha
 }
 
 bool cXmlParser::copyStr(const xml_StructInfo*source,xml_StructInfo**destination){
+  if(source==NULL)return false;
   *destination=createXmlStruct();
   if(*destination==NULL)return false;
   (*destination)->attributes=m_StrF.copyStrArray(source->attributes,source->nAttributes);
@@ -347,4 +322,28 @@ void cXmlParser::sendDebugMessage(const char*fName,const char*message1=NULL,cons
   printf("Function Name: %s Message1: %s Message2: %s\n",fName,message1,message2);
 
 }
+
+
+inline int cXmlParser::getStrUntilStopChar(mystr*returnStr,const mystr source,const mystr stopCharList){
+ int sourceInd=0;
+ int stopCharListInd;
+ bool stopCharFound;
+ while(source[sourceInd]!=STRING_END){
+   stopCharListInd=0;
+   stopCharFound=false;
+   while(stopCharList[stopCharListInd]!=STRING_END){
+     if(stopCharList[stopCharListInd]==source[sourceInd]){
+        stopCharFound=true;
+        break;
+     }
+     stopCharListInd++;
+   }
+   if(stopCharFound)break;
+   sourceInd++;
+ }
+ m_StrF.strAdd(returnStr,source,sourceInd);
+ *returnStr=m_StrF.trimFree(*returnStr);
+ if(*returnStr==NULL)return 0;
+ return sourceInd;
+};
 #endif

@@ -8,6 +8,9 @@
 #define CXMLPARSER_PARAM_OPENCLOSE  '\"'
 #define CXMLPARSER_SPACE ' '
 #define CXMLPARSER_EQUAL '='
+#define CXMLPARSER_TAGNAME_STOPCHARS " >"
+#define CXMLPARSER_TAGVALUE_STOPCHARS "<"
+#define CXMLPARSER_TAGEND_STOPCHARS ">"
 //#define  CXMLPARSER_DEBUG
 
 #include <stdio.h>
@@ -36,7 +39,6 @@ class cXmlParser{
     void Print(const xml_StructInfo*);
     xml_StructInfo* getRefByAttributeName(const xml_StructInfo*,const char *);
     xml_StructInfo* getRefByTagName(const xml_StructInfo*,const char *);
-    xml_StringArray getAttributeValue(const xml_StructInfo*,const char*);
     void freeMemory(xml_StructInfo**);
 
  private:
@@ -48,8 +50,8 @@ class cXmlParser{
     void setTagEnd(xml_StructInfo*,const char*,int*);
     void sendDebugMessage(const char*,const char*,const char*);
     bool copyStr(const xml_StructInfo*,xml_StructInfo**);
+    inline int getStrUntilStopChar(mystr*returnStr,const mystr source,const mystr stopCharList);
     //OBJ
-   // bool
     c_StringFunctions m_StrF;
 };
 
