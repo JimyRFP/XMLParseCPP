@@ -51,6 +51,9 @@ class cXmlParser{
     void sendDebugMessage(const char*,const char*,const char*);
     bool copyStr(const xml_StructInfo*,xml_StructInfo**);
     inline int getStrUntilStopChar(mystr*returnStr,const mystr source,const mystr stopCharList);
+    bool allocAttNameAndValueMemory(mystr**,mystr**,const int);
+    inline int getStrIndUntilStopChar(const mystr source,const mystr stopCharList);
+    inline int getFirstInvalidChars(const mystr source,const mystr stopCharList);
     //OBJ
     c_StringFunctions m_StrF;
 };
