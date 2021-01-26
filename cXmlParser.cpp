@@ -59,12 +59,13 @@ xml_StructInfo* cXmlParser::parser(const char* dataToParser){
   freeMemory(&returnStructRef);
   return NULL;
  }
+
  return returnStructRef;
 };
 
 char* cXmlParser::getTagName(const char* data,int*dataInd){
  mystr tagName=NULL;
- (*dataInd)+=getFirstInvalidChars((const mystr)&data[*dataInd],"< ");
+ (*dataInd)+=getFirstInvalidChars((const mystr)&data[*dataInd],(const mystr)CXMLPARSER_TAGNAME_FIRST_INVALIDCHARS);
  (*dataInd)+=getStrUntilStopChar(&tagName,(const mystr)&data[*dataInd],(const mystr)CXMLPARSER_TAGNAME_STOPCHARS);
  #ifdef CXMLPARSER_DEBUG
    sendDebugMessage(__func__,"TagName",tagName);
@@ -77,8 +78,8 @@ int cXmlParser::getAttsNameAndValue(const char*data,int*dataInd,char***retAttNam
  mystr tempStr=NULL;
  while(data[*dataInd]!=STRING_END && data[*dataInd]!=CXMLPARSER_ENDTAG){
   //GETPARAM NAME
-  (*dataInd)+=getStrUntilStopChar(&tempStr,(const mystr)&(data[*dataInd]),(const mystr)"=>");
-  (*dataInd)+=getFirstInvalidChars((const mystr)&(data[*dataInd]),(const mystr)"=");
+  (*dataInd)+=getStrUntilStopChar(&tempStr,(const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGPARAM_NAME_STOPCHARS);
+  (*dataInd)+=getFirstInvalidChars((const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGPARAM_NAME_FIRST_INVALIDCHARS);
   if(tempStr==NULL)continue;
   numberOfAttributes++;
   if(!allocAttNameAndValueMemory(retAttName,retAttValue,numberOfAttributes))return 0;
@@ -88,9 +89,10 @@ int cXmlParser::getAttsNameAndValue(const char*data,int*dataInd,char***retAttNam
   (*retAttName)[numberOfAttributes-1]=tempStr;
   (*retAttValue)[numberOfAttributes-1]=NULL;
   if(data[*dataInd]==CXMLPARSER_ENDTAG)return numberOfAttributes;
-  (*dataInd)+=getFirstInvalidChars((const mystr)&(data[*dataInd]),"\"");
-  (*dataInd)+=getStrUntilStopChar(&tempStr,(const mystr)&(data[*dataInd]),(const mystr)"\">");
-  (*dataInd)+=getFirstInvalidChars((const mystr)&(data[*dataInd]),"\"");
+  if(data[*dataInd]!='\"')continue;
+  (*dataInd)++;
+  (*dataInd)+=getStrUntilStopChar(&tempStr,(const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGPARAM_VALUE_STOPCHARS);
+  (*dataInd)+=getFirstInvalidChars((const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGPARAM_VALUE_FIRST_INVALIDCHARS);
   #ifdef CXMLPARSER_DEBUG
     sendDebugMessage(__func__,"TagAttValue",tempStr);
   #endif
@@ -103,7 +105,7 @@ int cXmlParser::getAttsNameAndValue(const char*data,int*dataInd,char***retAttNam
 
 char *cXmlParser::getTagValue(const char *data,int *dataInd){
   mystr tagValueStr=NULL;
-  (*dataInd)+=getFirstInvalidChars((const mystr)&data[*dataInd],"> ");
+  (*dataInd)+=getFirstInvalidChars((const mystr)&data[*dataInd],(const mystr)CXMLPARSER_TAGVALUE_FIRST_INVALIDCHARS);
   (*dataInd)+=getStrUntilStopChar(&tagValueStr,(const mystr)&(data[*dataInd]),(const mystr)CXMLPARSER_TAGVALUE_STOPCHARS);
   #ifdef CXMLPARSER_DEBUG
     sendDebugMessage(__func__,"TagValue",tagValueStr);
